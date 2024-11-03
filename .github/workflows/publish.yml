@@ -1,0 +1,30 @@
+﻿name: Publish
+
+on:
+  release:
+    types: [ published ]
+
+jobs:
+  publish:
+    name: "Build, Archive & Upload"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet publish -c Release --no-self-contained -p:Version=${{ github.event.release.tag_name }} -p:DebugType=None -p:UseAppHost=false -o ./pub-out
+
+      - name: Archive
+        run: zip onionfruit-deploy.zip -r ./pub-out
+        
+      - name: Upload
+        uses: softprops/action-gh-release@v2
+        with:
+          files: onionfruit-deploy.zip
