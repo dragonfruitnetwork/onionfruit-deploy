@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <Nullable>true</Nullable>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Octokit" Version="13.0.1" />
+      <PackageReference Include="Serilog" Version="4.1.0" />
+      <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+      <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="App.config">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+</Project>
