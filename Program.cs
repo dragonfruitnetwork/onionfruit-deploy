@@ -1,11 +1,12 @@
 ﻿using System;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using DragonFruit.OnionFruit.Deploy.Build;
+using Microsoft.Extensions.Configuration;
 using Octokit;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -14,24 +15,26 @@ namespace DragonFruit.OnionFruit.Deploy;
 
 public static class Program
 {
+    private static readonly IConfiguration Config;
+    
     public static string ReleasesDirectory { get; } = Path.Combine(Environment.CurrentDirectory, "releases");
     public static string StagingDirectory { get; } = Path.Combine(Environment.CurrentDirectory, "staging");
 
-    internal static string SolutionName => ConfigurationManager.AppSettings["SolutionName"] ?? throw new InvalidOperationException("SolutionName not set in app.config");
+    internal static string SolutionName => Config["SolutionName"] ?? throw new InvalidOperationException("SolutionName not set in app.config");
 
-    internal static string GitHubRepoUser => ConfigurationManager.AppSettings["GHUser"];
-    internal static string GitHubRepoName => ConfigurationManager.AppSettings["GHRepo"];
-    internal static string GitHubAccessToken => ConfigurationManager.AppSettings["GHToken"];
-    internal static string GitHubRepoUrl => $"https://github.com/{GitHubRepoUser}/{GitHubRepoName}";
+    internal static string GitHubRepoUser => Config["GitHub:User"] ?? string.Empty;
+    internal static string GitHubRepoName => Config["GitHub:Repo"] ?? string.Empty;
+    internal static string GitHubAccessToken => Config["GitHub:Token"] ?? string.Empty;
+    internal static string GitHubRepoUrl => CanUseGitHub ? $"https://github.com/{GitHubRepoUser}/{GitHubRepoName}" : string.Empty;
 
     internal static bool CanUseGitHub => !string.IsNullOrEmpty(GitHubAccessToken) && !string.IsNullOrEmpty(GitHubRepoName) && !string.IsNullOrEmpty(GitHubRepoUser);
 
-    internal static string VelopackId => ConfigurationManager.AppSettings["VPKId"];
-    internal static string VelopackIcon => ConfigurationManager.AppSettings["VPKIcon"];
+    internal static string VelopackId => Config["Velopack:PackageId"] ?? string.Empty;
+    internal static string VelopackIcon => Config["Velopack:PackageIcon"] ?? string.Empty;
     internal static string VelopackIconPath => Path.GetFullPath(Path.Combine(SolutionPath, VelopackIcon));
 
-    internal static string CodeSignCert => ConfigurationManager.AppSettings["CodeSignCert"];
-    internal static string CodeSignCertPassword => ConfigurationManager.AppSettings["CodeSignPassword"];
+    internal static string CodeSignCert => Config["CodeSign:Certificate"] ?? string.Empty;
+    internal static string CodeSignCertPassword => Config["CodeSign:Password"] ?? string.Empty;
 
     public static GitHubClient? GitHubClient { get; private set; }
 
@@ -45,6 +48,11 @@ public static class Program
             .Enrich.With(new ProcessAgeEnricher())
             .WriteTo.Console(outputTemplate: "> [{ProcessAge} {Level}]: {Message}{NewLine}", theme: AnsiConsoleTheme.Literate)
             .CreateLogger();
+
+        Config = new ConfigurationBuilder()
+            .AddXmlFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "oniondeploy.xml"), optional: true)
+            .AddEnvironmentVariables("ONIONDEPLOY_")
+            .Build();
     }
     
     public static async Task Main(string[] args)
@@ -63,9 +71,9 @@ public static class Program
             };
         }
         
-        ProjectLocation = GetArg(0);
+        ProjectLocation = GetArg(0) ?? string.Empty;
 
-        if (ProjectLocation == null || Path.GetExtension(ProjectLocation) != ".csproj" || !File.Exists(ProjectLocation))
+        if (Path.GetExtension(ProjectLocation) != ".csproj" || !File.Exists(ProjectLocation))
         {
             Log.Error("Invalid project file");
             return;
@@ -132,8 +140,8 @@ public static class Program
         
         Debug.Assert(process != null);
 
-        process.ErrorDataReceived += (_, args) => Log.Error(args.Data);
-        process.OutputDataReceived += (_, args) => Log.Debug(args.Data);
+        process.ErrorDataReceived += (_, err) => Log.Error(err.Data!);
+        process.OutputDataReceived += (_, output) => Log.Debug(output.Data!);
 
         process.BeginErrorReadLine();
         process.BeginOutputReadLine();
