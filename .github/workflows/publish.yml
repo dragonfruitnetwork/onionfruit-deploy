@@ -19,10 +19,10 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet publish -c Release --no-self-contained -p:Version=${{ github.event.release.tag_name }} -p:DebugType=None -p:UseAppHost=false -o ./pub-out
+        run: dotnet publish -c Release --no-self-contained -p:Version=${{ github.event.release.tag_name }} -p:DebugType=None -p:UseAppHost=false -o ./pub-out DragonFruit.OnionFruit.Deploy.csproj
 
       - name: Archive
-        run: zip onionfruit-deploy.zip -r ./pub-out
+        run: cd pub-out && zip -r ../onionfruit-deploy.zip .
         
       - name: Upload
         uses: softprops/action-gh-release@v2
