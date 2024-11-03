@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Serilog;
 
 namespace DragonFruit.OnionFruit.Deploy.Distribution;
 
@@ -57,14 +58,16 @@ public class VelopackBuildDistributor : IBuildDistributor
 
         if (Program.CanUseGitHub)
         {
-            await Program.RunCommand("dotnet", $"vpk upload github"
-                                               + $" --repoUrl=\"{Program.GitHubRepoUrl}\""
-                                               + $" --token=\"{Program.GitHubAccessToken}\""
-                                               + $" --outputDir=\"{Program.ReleasesDirectory}\""
-                                               + $" --tag=\"{version}\""
-                                               + $" --releaseName=\"{version}\""
-                                               + $" --merge"
-                                               + $" --channel=\"{_channel}\"",
+            Log.Information("Uploading release {version}-{channel} to GitHub", version, _channel);
+
+            await Program.RunCommand("vpk", $"upload github"
+                                            + $" --repoUrl=\"{Program.GitHubRepoUrl}\""
+                                            + $" --token=\"{Program.GitHubAccessToken}\""
+                                            + $" --outputDir=\"{Program.ReleasesDirectory}\""
+                                            + $" --tag=\"{version}\""
+                                            + $" --releaseName=\"{version}\""
+                                            + $" --merge"
+                                            + $" --channel=\"{_channel}\"",
                 useSolutionPath: false);
         }
     }

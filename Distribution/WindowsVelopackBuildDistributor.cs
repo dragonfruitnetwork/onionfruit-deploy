@@ -22,10 +22,15 @@ public class WindowsVelopackBuildDistributor(string applicationName, string oper
 
         if (Program.GitHubClient != null)
         {
-            var releaseFiles = await Program.GitHubClient.Repository.Release.GetLatest(Program.GitHubRepoUser, Program.GitHubRepoName);
+            var releases = await Program.GitHubClient.Repository.Release.GetAll(Program.GitHubRepoUser, Program.GitHubRepoName, new ApiOptions
+            {
+                PageCount = 1,
+                PageSize = 5
+            });
 
-            var installerAsset = releaseFiles.Assets.Single(x => x.Name.Equals($"{Program.VelopackId}-{channel}-Setup.exe"));
-            var releasesAsset = releaseFiles.Assets.Single(x => x.Name.Equals("RELEASES"));
+            var targetRelease = releases.Single(x => x.TagName.Equals(version));
+            var installerAsset = targetRelease.Assets.Single(x => x.Name.Equals($"{Program.VelopackId}-{channel}-Setup.exe"));
+            var releasesAsset = targetRelease.Assets.Single(x => x.Name.Equals("RELEASES"));
 
             await Program.GitHubClient.Repository.Release.EditAsset(Program.GitHubRepoUser, Program.GitHubRepoName, installerAsset.Id, new ReleaseAssetUpdate($"install-{installerSuffix}.exe"));
             await Program.GitHubClient.Repository.Release.EditAsset(Program.GitHubRepoUser, Program.GitHubRepoName, releasesAsset.Id, new ReleaseAssetUpdate("ONIONFRUITUPGRADE"));

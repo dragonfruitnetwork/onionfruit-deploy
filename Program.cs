@@ -2,6 +2,7 @@
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using DragonFruit.OnionFruit.Deploy.Build;
@@ -30,7 +31,7 @@ public static class Program
     internal static string VelopackIconPath => Path.GetFullPath(Path.Combine(SolutionPath, VelopackIcon));
 
     internal static string CodeSignCert => ConfigurationManager.AppSettings["CodeSignCert"];
-    internal static string CodeSignCertPassword => ConfigurationManager.AppSettings["CodeSignCertPassword"];
+    internal static string CodeSignCertPassword => ConfigurationManager.AppSettings["CodeSignPassword"];
 
     public static GitHubClient? GitHubClient { get; private set; }
 
@@ -48,7 +49,7 @@ public static class Program
     
     public static async Task Main(string[] args)
     {
-        if (args.Length < 3)
+        if (args.Length < 2)
         {
             Log.Information("Usage: [csproj file location] [runtime identifier] [version]");
             return;
@@ -69,8 +70,9 @@ public static class Program
             Log.Error("Invalid project file");
             return;
         }
-        
-        FindSolutionPath(Path.GetDirectoryName(ProjectLocation)!);
+
+        var fullProjectDir = Path.IsPathRooted(ProjectLocation) ? ProjectLocation : Path.Combine(Environment.CurrentDirectory, ProjectLocation);
+        FindSolutionPath(Path.GetDirectoryName(fullProjectDir)!);
 
         var version = GetArg(2) ?? await GetVersionFromPublicReleasesAsync();
         Log.Information("Building version {version}", version);
@@ -140,7 +142,7 @@ public static class Program
 
         if (process.ExitCode != 0)
         {
-            Log.Error("Command {command} failed with exit code {exitCode}", command, process.ExitCode);
+            Log.Error("Command {command:l} failed with exit code {exitCode}", $"{process.StartInfo.FileName} {process.StartInfo.Arguments}", process.ExitCode);
             
             if (throwOnError)
             {
@@ -174,14 +176,29 @@ public static class Program
 
     private static async Task<string> GetVersionFromPublicReleasesAsync()
     {
-        // get latest release for incrementing
-        var latestRelease = CanUseGitHub ? await GitHubClient!.Repository.Release.GetLatest(GitHubRepoUser, GitHubRepoName) : null;
-        var version = DateTime.Now.ToString("yyyy.Mdd.");
+        Release? latestRelease = null;
         
+        if (CanUseGitHub)
+        {
+            var latestReleases = await GitHubClient!.Repository.Release.GetAll(GitHubRepoUser, GitHubRepoName, new ApiOptions
+            {
+                PageSize = 1
+            });
+            
+            latestRelease = latestReleases.SingleOrDefault();
+        }
+        
+        // get latest release for incrementing
+        var version = DateTime.Now.ToString("yyyy.Mdd.");
+
         if (latestRelease?.Draft == false && latestRelease.TagName.StartsWith(version, StringComparison.InvariantCulture))
+        {
             version += int.Parse(latestRelease.TagName.Split('.')[2]) + 1;
+        }
         else
+        {
             version += "0";
+        }
         
         return version;
     }
