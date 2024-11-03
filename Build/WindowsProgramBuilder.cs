@@ -21,11 +21,11 @@ public class WindowsProgramBuilder(string version, Architecture arch) : ProgramB
 
     public override IBuildDistributor CreateBuildDistributor()
     {
-        StringBuilder extraArgs = new($"--noPortable --icon=\"{Program.VelopackIconPath}\"");
+        var extraArgs = new StringBuilder($"--noPortable --icon=\"{Program.VelopackIconPath}\"");
 
         if (File.Exists(Program.CodeSignCert))
         {
-            extraArgs.Append($"--signParams=\"sign /td sha256 /fd sha256 /tr http://timestamp.acs.microsoft.com /f \"{Program.CodeSignCert}\"");
+            extraArgs.Append($" --signParams=\"/td sha256 /fd sha256 /f \\\"{Program.CodeSignCert}\\\" /tr http://timestamp.acs.microsoft.com");
             
             if (!string.IsNullOrEmpty(Program.CodeSignCertPassword))
             {
