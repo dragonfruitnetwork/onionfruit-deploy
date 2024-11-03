@@ -18,9 +18,9 @@ public static class Program
 
     internal static string SolutionName => ConfigurationManager.AppSettings["SolutionName"] ?? throw new InvalidOperationException("SolutionName not set in app.config");
 
-    internal static string GitHubAccessToken => ConfigurationManager.AppSettings["GHToken"];
-    internal static string GitHubRepoUser => ConfigurationManager.AppSettings["GHUsername"];
+    internal static string GitHubRepoUser => ConfigurationManager.AppSettings["GHUser"];
     internal static string GitHubRepoName => ConfigurationManager.AppSettings["GHRepo"];
+    internal static string GitHubAccessToken => ConfigurationManager.AppSettings["GHToken"];
     internal static string GitHubRepoUrl => $"https://github.com/{GitHubRepoUser}/{GitHubRepoName}";
 
     internal static bool CanUseGitHub => !string.IsNullOrEmpty(GitHubAccessToken) && !string.IsNullOrEmpty(GitHubRepoName) && !string.IsNullOrEmpty(GitHubRepoUser);
