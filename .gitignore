@@ -401,3 +401,7 @@ FodyWeavers.xsd
 
 # App.config
 App.config
+
+# temp folders
+releases/*
+staging/*
