@@ -32,6 +32,7 @@ public class VelopackBuildDistributor : IBuildDistributor
         }
 
         await Program.RunCommand("vpk", $"download github"
+                                        + $" --pre"
                                         + $" --repoUrl=\"{Program.GitHubRepoUrl}\""
                                         + $" --token=\"{Program.GitHubAccessToken}\""
                                         + $" --channel=\"{_channel}\""
