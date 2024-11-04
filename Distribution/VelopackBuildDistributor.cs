@@ -58,7 +58,7 @@ public class VelopackBuildDistributor : IBuildDistributor
 
         if (Program.CanUseGitHub)
         {
-            Log.Information("Uploading release {version}-{channel} to GitHub", version, _channel);
+            Log.Information("Uploading release {version:l}-{channel:l} to GitHub", version, _channel);
 
             await Program.RunCommand("vpk", $"upload github"
                                             + $" --repoUrl=\"{Program.GitHubRepoUrl}\""

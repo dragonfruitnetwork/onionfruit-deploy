@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Octokit;
+using Serilog;
 
 namespace DragonFruit.OnionFruit.Deploy.Distribution;
 
@@ -30,10 +31,17 @@ public class WindowsVelopackBuildDistributor(string applicationName, string oper
 
             var targetRelease = releases.Single(x => x.TagName.Equals(version));
             var installerAsset = targetRelease.Assets.Single(x => x.Name.Equals($"{Program.VelopackId}-{channel}-Setup.exe"));
-            var releasesAsset = targetRelease.Assets.Single(x => x.Name.Equals("RELEASES"));
-
+            
+            Log.Information("Renaming installer file...");
             await Program.GitHubClient.Repository.Release.EditAsset(Program.GitHubRepoUser, Program.GitHubRepoName, installerAsset.Id, new ReleaseAssetUpdate($"install-{installerSuffix}.exe"));
-            await Program.GitHubClient.Repository.Release.EditAsset(Program.GitHubRepoUser, Program.GitHubRepoName, releasesAsset.Id, new ReleaseAssetUpdate("ONIONFRUITUPGRADE"));
+            
+            if (channel == "win")
+            {
+                Log.Information("Renaming RELEASES file...");
+                
+                var releasesAsset = targetRelease.Assets.Single(x => x.Name.Equals("RELEASES"));
+                await Program.GitHubClient.Repository.Release.EditAsset(Program.GitHubRepoUser, Program.GitHubRepoName, releasesAsset.Id, new ReleaseAssetUpdate("ONIONFRUITUPGRADE"));
+            }
         }
     }
 }
