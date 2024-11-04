@@ -31,19 +31,19 @@ public class VelopackBuildDistributor : IBuildDistributor
             return;
         }
 
-        await Program.RunCommand("vpk", $"download github"
+        await Program.RunCommand("dotnet", $"tool run vpk download github"
                                         + $" --pre"
                                         + $" --repoUrl=\"{Program.GitHubRepoUrl}\""
                                         + $" --token=\"{Program.GitHubAccessToken}\""
                                         + $" --channel=\"{_channel}\""
                                         + $" --outputDir=\"{Program.ReleasesDirectory}\"",
-            useSolutionPath: false, throwOnError: false);
+            throwOnError: false);
     }
 
 
     public virtual async Task PublishBuild(string version)
     {
-        await Program.RunCommand("vpk", $"[{_operatingSystemName}] pack"
+        await Program.RunCommand("dotnet", $"tool run vpk [{_operatingSystemName}] pack"
                                         + $" --packTitle=\"{PackTitle}\""
                                         + $" --packAuthors=\"DragonFruit Network\""
                                         + $" --packId=\"{Program.VelopackId}\""
@@ -54,14 +54,12 @@ public class VelopackBuildDistributor : IBuildDistributor
                                         + $" --channel=\"{_channel}\""
                                         + $" --runtime=\"{_runtimeIdentifier}\""
                                         + " --verbose"
-                                        + $" {_extraArgs}",
-            useSolutionPath: false);
+                                        + $" {_extraArgs}");
 
         if (Program.CanUseGitHub)
         {
             Log.Information("Uploading release {version:l}-{channel:l} to GitHub", version, _channel);
-
-            await Program.RunCommand("vpk", $"upload github"
+            await Program.RunCommand("dotnet", $"tool run vpk upload github"
                                             + $" --repoUrl=\"{Program.GitHubRepoUrl}\""
                                             + $" --token=\"{Program.GitHubAccessToken}\""
                                             + $" --outputDir=\"{Program.ReleasesDirectory}\""
