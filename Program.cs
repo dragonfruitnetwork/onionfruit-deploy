@@ -53,8 +53,6 @@ public static class Program
             .AddXmlFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "oniondeploy.xml"), optional: true)
             .AddEnvironmentVariables("ONIONDEPLOY_")
             .Build();
-        
-        Log.Information("OnionFruit Deploy v{version}", Assembly.GetExecutingAssembly().GetName().Version!.ToString(3));
     }
     
     public static async Task Main(string[] args)
@@ -85,7 +83,7 @@ public static class Program
         FindSolutionPath(Path.GetDirectoryName(fullProjectDir)!);
 
         var version = GetArg(2) ?? await GetVersionFromPublicReleasesAsync();
-        Log.Information("Building version {version}", version);
+        Log.Information("OnionFruit Deploy v{version:l} building {appVersion:l}", Assembly.GetExecutingAssembly().GetName().Version!.ToString(3), version);
 
         ProgramBuilder builder;
         

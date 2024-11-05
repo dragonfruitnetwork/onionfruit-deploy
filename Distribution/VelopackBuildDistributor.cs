@@ -66,8 +66,7 @@ public class VelopackBuildDistributor : IBuildDistributor
                                             + $" --tag=\"{version}\""
                                             + $" --releaseName=\"{version}\""
                                             + $" --merge"
-                                            + $" --channel=\"{_channel}\"",
-                useSolutionPath: false);
+                                            + $" --channel=\"{_channel}\"");
         }
     }
 }
