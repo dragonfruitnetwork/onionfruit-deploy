@@ -8,7 +8,6 @@ namespace DragonFruit.OnionFruit.Deploy.Build;
 
 public class WindowsProgramBuilder(string version, Architecture arch) : ProgramBuilder(version)
 {
-    private const string MainExeName = "DragonFruit.OnionFruit.Windows.exe";
     private const string OSName = "win";
 
     protected override string RuntimeIdentifier => arch switch
@@ -18,6 +17,8 @@ public class WindowsProgramBuilder(string version, Architecture arch) : ProgramB
 
         _ => throw new ArgumentOutOfRangeException(nameof(arch), arch, null)
     };
+
+    public override string ExecutableName => "DragonFruit.OnionFruit.Windows.exe";
 
     public override IBuildDistributor CreateBuildDistributor()
     {
@@ -45,6 +46,6 @@ public class WindowsProgramBuilder(string version, Architecture arch) : ProgramB
             _ => throw new ArgumentOutOfRangeException(nameof(arch), arch, null)
         };
 
-        return new WindowsVelopackBuildDistributor(MainExeName, OSName, RuntimeIdentifier, channelName, extraArgs: extraArgs.ToString());
+        return new WindowsVelopackBuildDistributor(ExecutableName, OSName, RuntimeIdentifier, channelName, extraArgs: extraArgs.ToString());
     }
 }

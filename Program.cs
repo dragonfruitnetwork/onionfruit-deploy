@@ -55,12 +55,12 @@ public static class Program
             .Build();
     }
     
-    public static async Task Main(string[] args)
+    public static async Task<int> Main(string[] args)
     {
         if (args.Length < 2)
         {
             Log.Information("Usage: [csproj file location] [runtime identifier] [version]");
-            return;
+            return -1;
         }
         
         if (CanUseGitHub)
@@ -76,7 +76,7 @@ public static class Program
         if (Path.GetExtension(ProjectLocation) != ".csproj" || !File.Exists(ProjectLocation))
         {
             Log.Error("Invalid project file");
-            return;
+            return -1;
         }
 
         var fullProjectDir = Path.IsPathRooted(ProjectLocation) ? ProjectLocation : Path.Combine(Environment.CurrentDirectory, ProjectLocation);
@@ -99,13 +99,26 @@ public static class Program
 
             default:
                 Log.Error("Unsupported platform {platform}", GetArg(1));
-                return;
+                return -1;
         }
         
         var distributor = builder.CreateBuildDistributor();
 
-        Log.Information("Performing build...");
-        await builder.BuildAsync();
+        if (Config["SkipBuild"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            if (!File.Exists(Path.Combine(StagingDirectory, builder.ExecutableName)))
+            {
+                Log.Error("Build was skipped but no executable was found in the staging directory");
+                return -1;
+            }
+            
+            Log.Information("Build skipped, restoring and publishing only...");
+        }
+        else
+        {
+            Log.Information("Performing build...");
+            await builder.BuildAsync();
+        }
         
         Log.Information("Restoring build...");
         await distributor.RestoreBuild();
@@ -123,6 +136,7 @@ public static class Program
         }
         
         Log.Information("Build complete");
+        return 0;
     }
     
     public static async Task<bool> RunCommand(string command, string args, bool useSolutionPath = true, bool throwOnError = true)

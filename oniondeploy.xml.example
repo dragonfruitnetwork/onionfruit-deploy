@@ -1,5 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <configuration>
+    <!-- if true, the staging directory will need to contain the files and entrypoint for the package -->
+    <SkipBuild>false</SkipBuild>
     <SolutionName>DragonFruit.OnionFruit.sln</SolutionName>
     <GitHub>
         <User>dragonfruitnetwork</User>

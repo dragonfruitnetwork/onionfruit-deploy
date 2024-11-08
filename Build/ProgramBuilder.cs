@@ -21,6 +21,7 @@ public abstract class ProgramBuilder
     }
 
     protected abstract string RuntimeIdentifier { get; }
+    public abstract string ExecutableName { get; }
 
     public abstract IBuildDistributor CreateBuildDistributor();
 
