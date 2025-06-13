@@ -65,8 +65,8 @@ public class MacOSVelopackBuildDistributor(
                                          + $" --hide-extension \"{bundleName}\""
                                          + (icnsFile != null ? $" --volicon \"{icnsFile}\"" : string.Empty)
                                          + (string.IsNullOrWhiteSpace(signingIdentity) ? string.Empty : $" --codesign \"{signingIdentity}\"")
-#if DEBUG
-                                         // + (string.IsNullOrWhiteSpace(notaryProfileKeychain) ? string.Empty : $" --notarize \"{notaryProfileKeychain}\"")
+#if !DEBUG
+                                         + (string.IsNullOrWhiteSpace(notaryProfileKeychain) ? string.Empty : $" --notarize \"{notaryProfileKeychain}\"")
 #endif
                                          + $" \"{DMGPath}\" \"{Path.Combine(Program.StagingDirectory, bundleName)}\"");
 
