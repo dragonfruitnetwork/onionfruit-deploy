@@ -20,7 +20,7 @@ public static class Program
     public static string ReleasesDirectory { get; } = Path.Combine(Environment.CurrentDirectory, "releases");
     public static string StagingDirectory { get; } = Path.Combine(Environment.CurrentDirectory, "staging");
 
-    internal static string SolutionName => Config["SolutionName"] ?? throw new InvalidOperationException("SolutionName not set in app.config");
+    internal static string SolutionName => Config["SolutionName"] ?? throw new InvalidOperationException("SolutionName not set in oniondeploy.xml");
 
     internal static string GitHubRepoUser => Config["GitHub:User"] ?? string.Empty;
     internal static string GitHubRepoName => Config["GitHub:Repo"] ?? string.Empty;
@@ -30,16 +30,13 @@ public static class Program
     internal static bool CanUseGitHub => !string.IsNullOrEmpty(GitHubAccessToken) && !string.IsNullOrEmpty(GitHubRepoName) && !string.IsNullOrEmpty(GitHubRepoUser);
 
     internal static string VelopackId => Config["Velopack:PackageId"] ?? string.Empty;
-    internal static string VelopackIcon => Config["Velopack:PackageIcon"] ?? string.Empty;
-    internal static string VelopackIconPath => Path.GetFullPath(Path.Combine(SolutionPath, VelopackIcon));
-
-    internal static string CodeSignCert => Config["CodeSign:Certificate"] ?? string.Empty;
-    internal static string CodeSignCertPassword => Config["CodeSign:Password"] ?? string.Empty;
+    
+    internal static IConfiguration MacOSConfig => Config.GetSection("MacOS");
+    internal static IConfiguration WindowsConfig => Config.GetSection("Windows");
 
     public static GitHubClient? GitHubClient { get; private set; }
 
     internal static string ProjectLocation { get; private set; } = null!;
-    internal static string SolutionPath { get; private set; } = null!;
 
     static Program()
     {
@@ -48,10 +45,11 @@ public static class Program
             .Enrich.With(new ProcessAgeEnricher())
             .WriteTo.Console(outputTemplate: "> [{ProcessAge} {Level}]: {Message}{NewLine}", theme: AnsiConsoleTheme.Literate)
             .CreateLogger();
-
+        
         Config = new ConfigurationBuilder()
-            .AddXmlFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "oniondeploy.xml"), optional: true)
             .AddEnvironmentVariables("ONIONDEPLOY_")
+            .AddXmlFile(Path.Combine(Environment.CurrentDirectory, "oniondeploy.xml"), optional: true)
+            .AddXmlFile(Path.Combine(Environment.CurrentDirectory, "oniondeploy.local.xml"), optional: true)
             .Build();
     }
     
@@ -63,14 +61,6 @@ public static class Program
             return -1;
         }
         
-        if (CanUseGitHub)
-        {
-            GitHubClient = new GitHubClient(new ProductHeaderValue("OnionFruit-Deploy"))
-            {
-                Credentials = new Credentials(GitHubAccessToken)
-            };
-        }
-        
         ProjectLocation = GetArg(0) ?? string.Empty;
 
         if (Path.GetExtension(ProjectLocation) != ".csproj" || !File.Exists(ProjectLocation))
@@ -79,9 +69,17 @@ public static class Program
             return -1;
         }
 
-        var fullProjectDir = Path.IsPathRooted(ProjectLocation) ? ProjectLocation : Path.Combine(Environment.CurrentDirectory, ProjectLocation);
-        FindSolutionPath(Path.GetDirectoryName(fullProjectDir)!);
-
+        // reset the cwd to the solution directory
+        Environment.CurrentDirectory = FindSolutionPath(Path.GetDirectoryName(Path.IsPathRooted(ProjectLocation) ? ProjectLocation : Path.Combine(Environment.CurrentDirectory, ProjectLocation))!);
+        
+        if (CanUseGitHub)
+        {
+            GitHubClient = new GitHubClient(new ProductHeaderValue("OnionFruit-Deploy"))
+            {
+                Credentials = new Credentials(GitHubAccessToken)
+            };
+        }
+        
         var version = GetArg(2) ?? await GetVersionFromPublicReleasesAsync();
         Log.Information("OnionFruit Deploy v{version:l} building {appVersion:l}", Assembly.GetExecutingAssembly().GetName().Version!.ToString(3), version);
 
@@ -95,6 +93,14 @@ public static class Program
 
             case "win-arm64":
                 builder = new WindowsProgramBuilder(version, Architecture.Arm64);
+                break;
+            
+            case "osx-x64":
+                builder = new MacOSProgramBuilder(version, Architecture.X64);
+                break;
+            
+            case "osx-arm64":
+                builder = new MacOSProgramBuilder(version, Architecture.Arm64);
                 break;
 
             default:
@@ -139,7 +145,7 @@ public static class Program
         return 0;
     }
     
-    public static async Task<bool> RunCommand(string command, string args, bool useSolutionPath = true, bool throwOnError = true)
+    public static async Task<bool> RunCommand(string command, string args, bool throwOnError = true)
     {
         var psi = new ProcessStartInfo(command, args)
         {
@@ -147,7 +153,7 @@ public static class Program
             UseShellExecute = false,
             RedirectStandardError = true,
             RedirectStandardOutput = true,
-            WorkingDirectory = useSolutionPath ? SolutionPath : Environment.CurrentDirectory
+            WorkingDirectory = Environment.CurrentDirectory
         };
         
         using var process = Process.Start(psi);
@@ -183,7 +189,7 @@ public static class Program
         return args.Length > ++index ? args[index] : null;
     }
     
-    private static void FindSolutionPath(string path)
+    private static string FindSolutionPath(string path)
     {
         while (true)
         {
@@ -193,7 +199,7 @@ public static class Program
             path = Path.GetFullPath(Path.Combine(path, ".."));
         }
 
-        SolutionPath = path;
+        return path;
     }
 
     private static async Task<string> GetVersionFromPublicReleasesAsync()

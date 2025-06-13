@@ -24,6 +24,12 @@ public class VelopackBuildDistributor : IBuildDistributor
 
     protected virtual string PackTitle => "OnionFruit\u2122";
 
+    protected virtual Task PostPackageAction()
+    {
+        // no-op by default
+        return Task.CompletedTask;
+    }
+
     public virtual async Task RestoreBuild()
     {
         if (!Program.CanUseGitHub)
@@ -55,6 +61,8 @@ public class VelopackBuildDistributor : IBuildDistributor
                                         + $" --runtime=\"{_runtimeIdentifier}\""
                                         + " --verbose"
                                         + $" {_extraArgs}");
+
+        await PostPackageAction();
 
         if (Program.CanUseGitHub)
         {

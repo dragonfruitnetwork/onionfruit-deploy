@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using DragonFruit.OnionFruit.Deploy.Distribution;
+using Serilog;
 
 namespace DragonFruit.OnionFruit.Deploy.Build;
 
@@ -22,20 +23,37 @@ public class WindowsProgramBuilder(string version, Architecture arch) : ProgramB
 
     public override IBuildDistributor CreateBuildDistributor()
     {
-        var extraArgs = new StringBuilder($"--noPortable --icon=\"{Program.VelopackIconPath}\"");
+        var packageIconPath = Program.WindowsConfig["PackageIcon"];
+        var codeSignCert = Program.WindowsConfig["CodeSigningCertificate"];
+        var codeSignCertPassword = Program.WindowsConfig["CodeSigningPassword"];
 
-        if (File.Exists(Program.CodeSignCert))
+        var extraArgs = new StringBuilder("--noPortable");
+
+        if (File.Exists(packageIconPath))
         {
-            extraArgs.Append($" --signParams=\"/td sha256 /fd sha256 /f \\\"{Program.CodeSignCert}\\\" /tr http://timestamp.acs.microsoft.com");
+            extraArgs.Append($" --icon=\"{packageIconPath}\"");
+        }
+        else
+        {
+            Log.Warning("Package icon '{PackageIconPath}' does not exist, skipping icon embedding", packageIconPath);
+        }
+
+        if (File.Exists(codeSignCert))
+        {
+            extraArgs.Append($" --signParams=\"/td sha256 /fd sha256 /f \\\"{codeSignCert}\\\" /tr http://timestamp.acs.microsoft.com");
             
-            if (!string.IsNullOrEmpty(Program.CodeSignCertPassword))
+            if (!string.IsNullOrEmpty(codeSignCertPassword))
             {
-                extraArgs.Append($" /p \"{Program.CodeSignCertPassword}\"\"");
+                extraArgs.Append($" /p \"{codeSignCertPassword}\"\"");
             }
             else
             {
                 extraArgs.Append('"');
             }
+        }
+        else
+        {
+            Log.Warning("Code signing certificate '{CodeSignCert}' does not exist, skipping code signing", codeSignCert);
         }
         
         var channelName = arch switch
