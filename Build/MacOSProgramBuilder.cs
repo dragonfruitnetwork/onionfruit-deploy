@@ -89,7 +89,7 @@ public class MacOSProgramBuilder(string version, Architecture arch) : ProgramBui
             _ => throw new ArgumentOutOfRangeException(nameof(arch), arch, null)
         };
 
-        return new MacOSVelopackBuildDistributor(ExecutableName, OSName, RuntimeIdentifier, channelName, extraArgs.ToString(), Path.Combine(Program.StagingDirectory, AppBundleName));
+        return new MacOSVelopackBuildDistributor(ExecutableName, OSName, RuntimeIdentifier, channelName, extraArgs.ToString(), Path.Combine(Program.StagingDirectory, AppBundleName), arch);
     }
 
     /// <summary>

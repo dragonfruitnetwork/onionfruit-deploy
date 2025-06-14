@@ -1,7 +1,7 @@
 using System;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
@@ -17,7 +17,8 @@ public class MacOSVelopackBuildDistributor(
     string runtimeIdentifier,
     string channel,
     string? extraArgs,
-    string? appBundlePath)
+    string? appBundlePath,
+    Architecture architecture)
     : VelopackBuildDistributor(applicationName, operatingSystemName, runtimeIdentifier, channel, extraArgs, appBundlePath)
 {
     private static readonly string DMGPath = Path.Combine(Program.ReleasesDirectory, "OnionFruit.dmg");
@@ -133,7 +134,7 @@ public class MacOSVelopackBuildDistributor(
 
             Log.Information("Uploading DMG to GitHub releases...");
             await using var readStream = new FileStream(DMGPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
-            await Program.GitHubClient.Repository.Release.UploadAsset(targetRelease, new ReleaseAssetUpload("OnionFruit.dmg", "application/x-apple-diskimage", readStream, TimeSpan.FromMinutes(5)));
+            await Program.GitHubClient.Repository.Release.UploadAsset(targetRelease, new ReleaseAssetUpload($"OnionFruit ({architecture.ToString().ToLowerInvariant()}).dmg", "application/x-apple-diskimage", readStream, TimeSpan.FromMinutes(5)));
 
             Log.Information("DMG uploaded successfully to GitHub release {version:l}", version);
         }
