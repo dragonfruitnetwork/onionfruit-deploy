@@ -36,8 +36,7 @@ public class MacOSProgramBuilder(string version, Architecture arch) : ProgramBui
 
         await ProcessLaunchdPlists(Program.MacOSConfig["launchd:LaunchDaemons"], bundleRoot, Path.Combine("Contents", "Library", "LaunchDaemons"));
         await ProcessLaunchdPlists(Program.MacOSConfig["launchd:LaunchAgents"], bundleRoot, Path.Combine("Contents", "Library", "LaunchAgents"));
-        await ProcessLaunchdPlists(Program.MacOSConfig["launchd:LoginItems"], bundleRoot, Path.Combine("Contents", "Library", "LoginItems"));
-        
+
         // copy icons to resources
         var iconsDirectory = Program.MacOSConfig["IconsDirectory"];
         if (!string.IsNullOrWhiteSpace(iconsDirectory) && Directory.Exists(iconsDirectory))
