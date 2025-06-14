@@ -124,7 +124,7 @@ public class MacOSProgramBuilder(string version, Architecture arch) : ProgramBui
 
             if (!directoryCreated)
             {
-                Directory.CreateDirectory(destinationDirectory);
+                Directory.CreateDirectory(targetDirectory);
                 directoryCreated = true;
             }
 
