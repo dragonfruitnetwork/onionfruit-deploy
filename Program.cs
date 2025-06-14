@@ -95,11 +95,11 @@ public static class Program
                 builder = new WindowsProgramBuilder(version, Architecture.Arm64);
                 break;
             
-            case "osx-x64":
+            case "osx-x64" when OperatingSystem.IsMacOS():
                 builder = new MacOSProgramBuilder(version, Architecture.X64);
                 break;
             
-            case "osx-arm64":
+            case "osx-arm64" when OperatingSystem.IsMacOS():
                 builder = new MacOSProgramBuilder(version, Architecture.Arm64);
                 break;
 

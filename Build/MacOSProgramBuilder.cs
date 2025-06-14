@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using DragonFruit.OnionFruit.Deploy.Distribution;
 using Microsoft.VisualBasic.FileIO;
+using PListNet;
+using PListNet.Nodes;
 using Serilog;
 
 namespace DragonFruit.OnionFruit.Deploy.Build;
@@ -27,40 +29,23 @@ public class MacOSProgramBuilder(string version, Architecture arch) : ProgramBui
 
     public override async Task BuildAsync()
     {
-        // create the app bundle and directories
         var bundleRoot = Path.Combine(Program.StagingDirectory, AppBundleName + ".tmp");
 
-        var executablesDirectory = CreateAndReturnDirectory(Path.Combine(bundleRoot, "Contents", "MacOS"));
-        var appResourcesDirectory = CreateAndReturnDirectory(Path.Combine(bundleRoot, "Contents", "Resources"));
-        var launchDaemonsDirectory = CreateAndReturnDirectory(Path.Combine(bundleRoot, "Contents", "Library", "LaunchDaemons"));
-
         Log.Information("Building into app bundle at '{BundleRoot}'", bundleRoot);
-        await RunDotnetPublish(outputDir: executablesDirectory);
+        await RunDotnetPublish(outputDir: Path.Combine(bundleRoot, "Contents", "MacOS"));
+
+        await ProcessLaunchdPlists(Program.MacOSConfig["launchd:LaunchDaemons"], bundleRoot, Path.Combine("Contents", "Library", "LaunchDaemons"));
+        await ProcessLaunchdPlists(Program.MacOSConfig["launchd:LaunchAgents"], bundleRoot, Path.Combine("Contents", "Library", "LaunchAgents"));
+        await ProcessLaunchdPlists(Program.MacOSConfig["launchd:LoginItems"], bundleRoot, Path.Combine("Contents", "Library", "LoginItems"));
         
-        var infoPlistPath = Program.MacOSConfig["InfoPlist"];
-        var launchDaemonPlistPath = Program.MacOSConfig["ServicePlist"];
-
-        if (string.IsNullOrWhiteSpace(infoPlistPath) || !File.Exists(infoPlistPath))
-        {
-            throw new FileNotFoundException("Info.plist file not provided or not found.", infoPlistPath);
-        }
-
-        if (string.IsNullOrWhiteSpace(launchDaemonPlistPath) || !File.Exists(launchDaemonPlistPath))
-        {
-            throw new FileNotFoundException("Service plist file not provided or not found.", launchDaemonPlistPath);
-        }
-        
-        // copy launch daemon config plist
-        // todo read the launchdaemon plist and check the app is where it says it is
-        Log.Information("Copying launch daemon plist to '{LaunchDaemonsDirectory}'", launchDaemonsDirectory);
-        File.Copy(launchDaemonPlistPath, Path.Combine(launchDaemonsDirectory, Path.GetFileName(launchDaemonPlistPath)));
-
         // copy icons to resources
         var iconsDirectory = Program.MacOSConfig["IconsDirectory"];
         if (!string.IsNullOrWhiteSpace(iconsDirectory) && Directory.Exists(iconsDirectory))
         {
-            Log.Information("Copying icons from '{IconsDirectory}' to '{AppResourcesDirectory}'", iconsDirectory, appResourcesDirectory);
-            FileSystem.CopyDirectory(iconsDirectory, appResourcesDirectory);
+            var bundleResources = Path.Combine(bundleRoot, "Contents", "Resources");
+            
+            Log.Information("Copying icons from '{IconsDirectory}' to '{AppResourcesDirectory}'", iconsDirectory, bundleResources);
+            FileSystem.CopyDirectory(iconsDirectory, bundleResources);
         }
         else
         {
@@ -68,12 +53,18 @@ public class MacOSProgramBuilder(string version, Architecture arch) : ProgramBui
         }
 
         // write Info.plist with correct version and copyright year
+        var infoPlistPath = Program.MacOSConfig["InfoPlist"];
         var bundleInfoPlist = Path.Combine(bundleRoot, "Contents", "Info.plist");
+
+        if (string.IsNullOrWhiteSpace(infoPlistPath) || !File.Exists(infoPlistPath))
+        {
+            throw new FileNotFoundException("Info.plist file not provided or not found.", infoPlistPath);
+        }
         
         File.Copy(infoPlistPath, bundleInfoPlist);
 
         await Program.RunCommand("/usr/libexec/PlistBuddy", ""
-            + $" -c \"Set :NSHumanReadableCopyright Copyright {DateTime.UtcNow.Year} © DragonFruit Network\""
+            + $" -c \"Set :NSHumanReadableCopyright Copyright © {DateTime.UtcNow.Year} DragonFruit Network\""
             + $" -c \"Set :CFBundleShortVersionString {Version}\""
             + $" \"{bundleInfoPlist}\"");
         
@@ -101,15 +92,48 @@ public class MacOSProgramBuilder(string version, Architecture arch) : ProgramBui
 
         return new MacOSVelopackBuildDistributor(ExecutableName, OSName, RuntimeIdentifier, channelName, extraArgs.ToString(), Path.Combine(Program.StagingDirectory, AppBundleName));
     }
-    
-    private static string CreateAndReturnDirectory(string path)
+
+    /// <summary>
+    /// Processes either a folder of plist files or a single plist, validating the contents and copying them to the specified destination directory.
+    /// </summary>
+    /// <param name="plistPath">Path to either a single .plist file or a directory containing multiple .plist files</param>
+    /// <param name="bundleRoot">The root of the app bundle (should be the directory ending in .app)</param>
+    /// <param name="destinationDirectory">Destination directory for the plists, relative to the <see cref="bundleRoot"/></param>
+    private static async Task ProcessLaunchdPlists(string? plistPath, string bundleRoot, string destinationDirectory)
     {
-        if (Directory.Exists(path))
+        if (string.IsNullOrEmpty(plistPath))
         {
-            Directory.Delete(path, true);
+            return;
         }
 
-        Directory.CreateDirectory(path);
-        return path;
+        var targetDirectory = Path.Combine(bundleRoot, destinationDirectory);
+        var directoryCreated = Directory.Exists(targetDirectory);
+        
+        // if a directory is passed, process all .plist files held inside
+        foreach (var plist in File.GetAttributes(plistPath) == FileAttributes.Directory ? Directory.GetFiles(plistPath, "*.plist") : [plistPath])
+        {
+            await using (var daemonPlistStream = File.OpenRead(plist))
+            {
+                var plistContents = (DictionaryNode)PList.Load(daemonPlistStream);
+                var bundleProgram = (StringNode)plistContents["BundleProgram"];
+
+                if (!File.Exists(Path.Combine(bundleRoot, bundleProgram.Value)))
+                {
+                    throw new FileNotFoundException("BundleProgram specified in the launch daemon plist was not found in the app bundle.", bundleProgram.Value);
+                }
+            }
+
+            if (!directoryCreated)
+            {
+                Directory.CreateDirectory(destinationDirectory);
+                directoryCreated = true;
+            }
+
+            // ensure the file ends in .plist
+            var plistName = Path.ChangeExtension(Path.GetFileName(plist), ".plist");
+
+            Log.Information("Copying plist {name} to '{DestinationPlistPath}'", plistName, targetDirectory);
+            File.Copy(plist, Path.Combine(targetDirectory, plistName));
+        }
     }
 }
