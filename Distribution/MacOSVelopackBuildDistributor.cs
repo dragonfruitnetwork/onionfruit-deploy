@@ -21,10 +21,7 @@ public class MacOSVelopackBuildDistributor(
     Architecture architecture)
     : VelopackBuildDistributor(applicationName, operatingSystemName, runtimeIdentifier, channel, extraArgs, appBundlePath)
 {
-    private static readonly string DMGPath = Path.Combine(Program.ReleasesDirectory, "OnionFruit.dmg");
-
-    // having TM in the title seems to break launchd...
-    // protected override string PackTitle => "OnionFruit";
+    private readonly string _dmgPath = Path.Combine(Program.ReleasesDirectory, $"OnionFruit ({architecture.ToString().ToLowerInvariant()}).dmg");
 
     protected override async Task PostPackageAction()
     {
@@ -69,7 +66,7 @@ public class MacOSVelopackBuildDistributor(
 #if !DEBUG
                                          + (string.IsNullOrWhiteSpace(notaryProfileKeychain) ? string.Empty : $" --notarize \"{notaryProfileKeychain}\"")
 #endif
-                                         + $" \"{DMGPath}\" \"{Path.Combine(Program.StagingDirectory, bundleName)}\"");
+                                         + $" \"{_dmgPath}\" \"{Path.Combine(Program.StagingDirectory, bundleName)}\"");
 
         // remove portable .zip, replace with the .dmg and update the assets.*.json file
         var assetsJsonFile = Directory.EnumerateFiles(Program.ReleasesDirectory, "assets.*.json", SearchOption.TopDirectoryOnly).SingleOrDefault();
@@ -100,16 +97,12 @@ public class MacOSVelopackBuildDistributor(
                 continue;
             }
 
-            item["RelativeFileName"] = Path.GetFileName(DMGPath);
+            item["RelativeFileName"] = Path.GetFileName(_dmgPath);
             break;
         }
 
         jsonStream.SetLength(0); // truncate in case the new content is smaller
-        await JsonSerializer.SerializeAsync(jsonStream, assetsArray, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        });
+        await JsonSerializer.SerializeAsync(jsonStream, assetsArray);
     }
 
     public override async Task PublishBuild(string version)
@@ -117,7 +110,7 @@ public class MacOSVelopackBuildDistributor(
         await base.PublishBuild(version);
         
         // upload the DMG to GitHub, if one
-        if (Program.GitHubClient != null && File.Exists(DMGPath))
+        if (Program.GitHubClient != null && File.Exists(_dmgPath))
         {
             var releases = await Program.GitHubClient.Repository.Release.GetAll(Program.GitHubRepoUser, Program.GitHubRepoName, new ApiOptions
             {
@@ -133,7 +126,7 @@ public class MacOSVelopackBuildDistributor(
             }
 
             Log.Information("Uploading DMG to GitHub releases...");
-            await using var readStream = new FileStream(DMGPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await using var readStream = new FileStream(_dmgPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
             await Program.GitHubClient.Repository.Release.UploadAsset(targetRelease, new ReleaseAssetUpload($"OnionFruit ({architecture.ToString().ToLowerInvariant()}).dmg", "application/x-apple-diskimage", readStream, TimeSpan.FromMinutes(5)));
 
             Log.Information("DMG uploaded successfully to GitHub release {version:l}", version);
