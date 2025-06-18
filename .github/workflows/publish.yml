@@ -27,13 +27,13 @@ jobs:
       - name: Build
         run: dotnet publish -c Release --no-self-contained -p:Version=${{ github.event.release.tag_name }} -p:DebugType=None -p:UseAppHost=false -o ./pub-out DragonFruit.OnionFruit.Deploy.csproj
 
+      - name: Archive
+        run: cd pub-out && zip -r ../onionfruit-deploy.zip .
+
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-path: 'pub-out/DragonFruit.OnionFruit.Deploy.dll'
-
-      - name: Archive
-        run: cd pub-out && zip -r ../onionfruit-deploy.zip .
+          subject-path: 'onionfruit-deploy.zip'
 
       - name: Upload
         uses: softprops/action-gh-release@v2
