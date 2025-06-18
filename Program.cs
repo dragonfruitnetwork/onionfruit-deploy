@@ -129,7 +129,7 @@ public static class Program
         Log.Information("Restoring build...");
         await distributor.RestoreBuild();
 
-        Log.Information("Pack n' Publishing build...");
+        Log.Information("Pack 'n' Publishing build...");
         await distributor.PublishBuild(version);
         
         if (CanUseGitHub)
