@@ -19,7 +19,7 @@ public class MacOSVelopackBuildDistributor(
     Architecture architecture)
     : VelopackBuildDistributor(applicationName, operatingSystemName, runtimeIdentifier, channel, extraArgs, appBundlePath)
 {
-    private readonly string _dmgPath = Path.Combine(Program.ReleasesDirectory, $"OnionFruit ({architecture.ToString().ToLowerInvariant()}).dmg");
+    private readonly string _dmgPath = Path.Combine(Program.ReleasesDirectory, $"OnionFruit-{architecture.ToString().ToLowerInvariant()}.dmg");
 
     protected override async Task PostPackageAction()
     {
@@ -50,7 +50,7 @@ public class MacOSVelopackBuildDistributor(
         
         var icnsFile = Directory.Exists(iconsDirectory) ? Directory.EnumerateFiles(iconsDirectory, "*.icns", SearchOption.TopDirectoryOnly).SingleOrDefault() : null;
 
-        await Program.RunCommand("create-dmg", $"--volname \"Install OnionFruit\""
+        await Program.RunCommand("create-dmg", $"--volname \"Install OnionFruit™\""
                                          + $" --filesystem APFS"
                                          + $" --window-pos 200 120"
                                          + $" --window-size 800 400"
