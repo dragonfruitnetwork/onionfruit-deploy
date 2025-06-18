@@ -1,11 +1,9 @@
-using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using Octokit;
 using Serilog;
 using FileMode = System.IO.FileMode;
 
@@ -103,33 +101,5 @@ public class MacOSVelopackBuildDistributor(
 
         jsonStream.SetLength(0); // truncate in case the new content is smaller
         await JsonSerializer.SerializeAsync(jsonStream, assetsArray);
-    }
-
-    public override async Task PublishBuild(string version)
-    {
-        await base.PublishBuild(version);
-        
-        // upload the DMG to GitHub, if one
-        if (Program.GitHubClient != null && File.Exists(_dmgPath))
-        {
-            var releases = await Program.GitHubClient.Repository.Release.GetAll(Program.GitHubRepoUser, Program.GitHubRepoName, new ApiOptions
-            {
-                PageCount = 1,
-                PageSize = 5
-            });
-
-            var targetRelease = releases.SingleOrDefault(x => x.TagName.Equals(version));
-            if (targetRelease == null)
-            {
-                Log.Error("No release found for version {version:l}", version);
-                return;
-            }
-
-            Log.Information("Uploading DMG to GitHub releases...");
-            await using var readStream = new FileStream(_dmgPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
-            await Program.GitHubClient.Repository.Release.UploadAsset(targetRelease, new ReleaseAssetUpload($"OnionFruit ({architecture.ToString().ToLowerInvariant()}).dmg", "application/x-apple-diskimage", readStream, TimeSpan.FromMinutes(5)));
-
-            Log.Information("DMG uploaded successfully to GitHub release {version:l}", version);
-        }
     }
 }
