@@ -4,16 +4,33 @@
     <SkipBuild>false</SkipBuild>
     <SolutionName>DragonFruit.OnionFruit.sln</SolutionName>
     <GitHub>
-        <User>dragonfruitnetwork</User>
-        <Repo>onionfruit</Repo>
+        <User></User>
+        <Repo></Repo>
         <Token></Token>
     </GitHub>
     <Velopack>
-        <PackageId>onionfruit</PackageId>
-        <PackageIcon>DragonFruit.OnionFruit/Assets/icon.ico</PackageIcon>
+        <Enabled>true</Enabled>
+        <PackageId></PackageId>
     </Velopack>
-    <CodeSign>
-        <Certificate></Certificate>
-        <Password></Password>
-    </CodeSign>
+    <Windows>
+        <CodeSigningCertificate></CodeSigningCertificate>
+        <CodeSigningPassword></CodeSigningPassword>
+        <PackageIcon></PackageIcon>
+    </Windows>
+    <MacOS>
+        <InfoPlist>Info.plist</InfoPlist>
+        <EntitlementsPlist>app.entitlements</EntitlementsPlist>
+        <IconsDirectory></IconsDirectory>
+
+        <launchd>
+            <!-- nodes accept either a folder or a single file -->
+            <LaunchAgents></LaunchAgents>
+            <LaunchDaemons></LaunchDaemons>
+        </launchd>
+
+        <!-- requires the create-dmg script installed (brew install create-dmg) -->
+        <CreateInstallDMG>true</CreateInstallDMG>
+        <CodeSigningIdentity>-</CodeSigningIdentity>
+        <NotaryKeychainProfile></NotaryKeychainProfile>
+    </MacOS>
 </configuration>
