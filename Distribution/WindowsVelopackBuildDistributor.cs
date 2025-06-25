@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Octokit;
@@ -49,5 +50,20 @@ public class WindowsVelopackBuildDistributor(
                 await Program.GitHubClient.Repository.Release.EditAsset(Program.GitHubRepoUser, Program.GitHubRepoName, releasesAsset.Id, new ReleaseAssetUpdate("ONIONFRUITUPGRADE"));
             }
         }
+    }
+
+    protected override Task PostPackageAction()
+    {
+        if (channel == "win")
+        {
+            return Task.CompletedTask;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(Program.ReleasesDirectory, "RELEASES*", SearchOption.TopDirectoryOnly))
+        {
+            File.Delete(file);
+        }
+
+        return Task.CompletedTask;
     }
 }
