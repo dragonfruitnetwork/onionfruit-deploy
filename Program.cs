@@ -47,9 +47,9 @@ public static class Program
             .CreateLogger();
         
         Config = new ConfigurationBuilder()
-            .AddEnvironmentVariables("ONIONDEPLOY_")
             .AddXmlFile(Path.Combine(Environment.CurrentDirectory, "oniondeploy.xml"), optional: true)
             .AddXmlFile(Path.Combine(Environment.CurrentDirectory, "oniondeploy.local.xml"), optional: true)
+            .AddEnvironmentVariables("ONIONDEPLOY_")
             .Build();
     }
     
