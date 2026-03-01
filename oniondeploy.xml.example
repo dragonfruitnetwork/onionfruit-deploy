@@ -13,8 +13,18 @@
         <PackageId></PackageId>
     </Velopack>
     <Windows>
-        <CodeSigningCertificate></CodeSigningCertificate>
-        <CodeSigningPassword></CodeSigningPassword>
+        <Sign>
+            <!-- each child element is treated as a signing cert entry -->
+            <!-- first cert = primary signature, subsequent certs use /as (append signature) -->
+            <Certificate>
+                <File></File>
+                <Password></Password>
+            </Certificate>
+            <Certificate2>
+                <File></File>
+                <Password></Password>
+            </Certificate2>
+        </Sign>
         <PackageIcon></PackageIcon>
     </Windows>
     <MacOS>

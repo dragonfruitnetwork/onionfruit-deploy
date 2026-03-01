@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -24,8 +25,7 @@ public class WindowsProgramBuilder(string version, Architecture arch) : ProgramB
     public override IBuildDistributor CreateBuildDistributor()
     {
         var packageIconPath = Program.WindowsConfig["PackageIcon"];
-        var codeSignCert = Program.WindowsConfig["CodeSigningCertificate"];
-        var codeSignCertPassword = Program.WindowsConfig["CodeSigningPassword"];
+        var signSection = Program.WindowsConfig.GetSection("Sign");
 
         var extraArgs = new StringBuilder("--noPortable");
 
@@ -38,22 +38,58 @@ public class WindowsProgramBuilder(string version, Architecture arch) : ProgramB
             Log.Warning("Package icon '{PackageIconPath}' does not exist, skipping icon embedding", packageIconPath);
         }
 
-        if (File.Exists(codeSignCert))
+        // collect signing certificates from config (supports env var and xml formats)
+        var certificates = new List<(string FilePath, string? Password)>();
+
+        foreach (var section in signSection.GetChildren())
         {
-            extraArgs.Append($" --signParams=\"/td sha256 /fd sha256 /f \\\"{codeSignCert}\\\" /tr http://timestamp.acs.microsoft.com");
-            
-            if (!string.IsNullOrEmpty(codeSignCertPassword))
+            var certPath = section.Value ?? section["File"];
+            var certPassword = section["Password"] ?? section["Pass"];
+
+            if (string.IsNullOrEmpty(certPath))
             {
-                extraArgs.Append($" /p \"{codeSignCertPassword}\"\"");
+                Log.Warning("Certificate section '{SectionKey}' has no file path configured, skipping", section.Key);
+                continue;
             }
-            else
+
+            if (!File.Exists(certPath))
             {
-                extraArgs.Append('"');
+                Log.Warning("Code signing certificate '{CertPath}' (from '{SectionKey}') does not exist, skipping", certPath, section.Key);
+                continue;
             }
+
+            certificates.Add((certPath, certPassword));
+        }
+
+        if (certificates.Count > 0)
+        {
+            var signTemplate = new StringBuilder();
+
+            for (var i = 0; i < certificates.Count; i++)
+            {
+                var (certPath, certPassword) = certificates[i];
+
+                if (i > 0)
+                    signTemplate.Append(" && ");
+
+                signTemplate.Append("signtool sign");
+
+                if (i > 0)
+                    signTemplate.Append(" /as");
+
+                signTemplate.Append($" /td sha256 /fd sha256 /f \\\"{certPath}\\\" /tr http://timestamp.acs.microsoft.com");
+
+                if (!string.IsNullOrEmpty(certPassword))
+                    signTemplate.Append($" /p \\\"{certPassword}\\\"");
+
+                signTemplate.Append(" \\\"{{file}}\\\"");
+            }
+
+            extraArgs.Append($" --signTemplate=\"{signTemplate}\"");
         }
         else
         {
-            Log.Warning("Code signing certificate '{CodeSignCert}' does not exist, skipping code signing", codeSignCert);
+            Log.Warning("No valid code signing certificates found, skipping code signing");
         }
         
         var channelName = arch switch
