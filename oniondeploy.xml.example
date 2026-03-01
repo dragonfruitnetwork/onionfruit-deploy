@@ -13,7 +13,7 @@
         <PackageId></PackageId>
     </Velopack>
     <Windows>
-        <Sign>
+        <Certificates>
             <!-- each child element is treated as a signing cert entry -->
             <!-- first cert = primary signature, subsequent certs use /as (append signature) -->
             <Certificate>
@@ -24,7 +24,8 @@
                 <File></File>
                 <Password></Password>
             </Certificate2>
-        </Sign>
+        </Certificates>
+        <SigntoolPath>C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe</SigntoolPath>
         <PackageIcon></PackageIcon>
     </Windows>
     <MacOS>

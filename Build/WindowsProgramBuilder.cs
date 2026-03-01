@@ -25,7 +25,8 @@ public class WindowsProgramBuilder(string version, Architecture arch) : ProgramB
     public override IBuildDistributor CreateBuildDistributor()
     {
         var packageIconPath = Program.WindowsConfig["PackageIcon"];
-        var signSection = Program.WindowsConfig.GetSection("Sign");
+        var signToolPath = Program.WindowsConfig["SigntoolPath"] ?? "signtool.exe";
+        var signSection = Program.WindowsConfig.GetSection("Certificates");
 
         var extraArgs = new StringBuilder("--noPortable");
 
@@ -64,25 +65,30 @@ public class WindowsProgramBuilder(string version, Architecture arch) : ProgramB
         if (certificates.Count > 0)
         {
             var signTemplate = new StringBuilder();
-
             for (var i = 0; i < certificates.Count; i++)
             {
                 var (certPath, certPassword) = certificates[i];
 
                 if (i > 0)
+                {
                     signTemplate.Append(" && ");
+                }
 
-                signTemplate.Append("signtool sign");
+                signTemplate.Append($"\\\"{signToolPath}\\\" sign");
 
                 if (i > 0)
+                {
                     signTemplate.Append(" /as");
+                }
 
                 signTemplate.Append($" /td sha256 /fd sha256 /f \\\"{certPath}\\\" /tr http://timestamp.acs.microsoft.com");
 
                 if (!string.IsNullOrEmpty(certPassword))
+                {
                     signTemplate.Append($" /p \\\"{certPassword}\\\"");
+                }
 
-                signTemplate.Append(" \\\"{{file}}\\\"");
+                signTemplate.Append(" {{file}}");
             }
 
             extraArgs.Append($" --signTemplate=\"{signTemplate}\"");
